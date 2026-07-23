@@ -97,7 +97,7 @@ export default function AdminPage() {
   )
 
   return (
-    <div style={{ background:'#0A0A0A', minHeight:'100vh', color:'#F0EDE8', fontFamily:'Barlow, sans-serif', padding:'24px' }}>
+    <div style={{ background:'#0A0A0A', minHeight:'100vh', color:'#F0EDE8', fontFamily:'Barlow, sans-serif', padding:'24px', paddingTop:'90px' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px', borderBottom:'1px solid #1a1a1a', paddingBottom:'16px' }}>
         <h1 style={{ fontFamily:'Playfair Display, serif', color:'#C9A84C', fontSize:'1.6rem' }}>OLDY COSMO — Admin</h1>
         <div style={{ display:'flex', gap:'12px' }}>
