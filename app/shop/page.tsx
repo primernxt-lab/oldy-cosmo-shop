@@ -1,4 +1,7 @@
 'use client'
+
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { supabase, Product } from '@/lib/supabase'
 import Link from 'next/link'
@@ -77,3 +80,4 @@ export default function ShopPage() {
     </div>
   )
 }
+
