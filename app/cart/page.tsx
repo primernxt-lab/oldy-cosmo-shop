@@ -21,7 +21,7 @@ export default function CartPage() {
           <div key={item.variantId} style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #1a1a1a', paddingBottom: '24px', marginBottom: '24px', alignItems: 'center' }}>
             {item.imageUrl && <img src={item.imageUrl} style={{ width: '80px', height: '100px', objectFit: 'cover' }} />}
             <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '4px' }}>{item.name_th || item.name}</p>
+              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '4px' }}>{item.nameTh || item.name}</p>
               <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '8px' }}>ไซส์: {item.size} {item.color && `| ${item.color}`}</p>
               <p style={{ color: '#C9A84C' }}>฿{item.price.toLocaleString()}</p>
             </div>
