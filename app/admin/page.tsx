@@ -1,7 +1,4 @@
 'use client'
-
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -16,6 +13,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<'products'|'orders'>('products')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<string|null>(null)
   const [form, setForm] = useState({ sku:'', name:'', name_th:'', category:'JACKET', collection:'', description_th:'', price:'', status:'active', featured:false })
   const [variants, setVariants] = useState([{ size:'M', color:'', screen_print:'', stock_qty:0 }])
   const [imageUrls, setImageUrls] = useState([''])
@@ -34,18 +32,45 @@ export default function AdminPage() {
     await supabase.from('orders').update({ order_status: status }).eq('id', id)
     fetchOrders()
   }
+
+  function loadProductForEdit(p: any) {
+    setEditingId(p.id)
+    setForm({ sku: p.sku, name: p.name, name_th: p.name_th||'', category: p.category, collection: p.collection||'', description_th: p.description_th||'', price: p.price?.toString()||'', status: p.status, featured: p.featured||false })
+    setVariants(p.product_variants?.length ? p.product_variants.map((v: any) => ({ size: v.size, color: v.color||'', screen_print: v.screen_print||'', stock_qty: v.stock_qty||0 })) : [{ size:'M', color:'', screen_print:'', stock_qty:0 }])
+    setImageUrls(p.product_images?.length ? p.product_images.map((i: any) => i.image_url) : [''])
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function resetForm() {
+    setEditingId(null)
+    setShowForm(false)
+    setForm({ sku:'', name:'', name_th:'', category:'JACKET', collection:'', description_th:'', price:'', status:'active', featured:false })
+    setVariants([{ size:'M', color:'', screen_print:'', stock_qty:0 }])
+    setImageUrls([''])
+  }
+
   async function saveProduct() {
     if (!form.name || !form.price || !form.sku) return alert('กรุณากรอก SKU, ชื่อสินค้า และราคา')
     setSaving(true)
-    const { data: prod, error } = await supabase.from('products').insert({ sku:form.sku, name:form.name, name_th:form.name_th, category:form.category, collection:form.collection, description_th:form.description_th, price:parseFloat(form.price), status:form.status, featured:form.featured }).select().single()
-    if (error) { alert('Error: '+error.message); setSaving(false); return }
-    if (variants.length) await supabase.from('product_variants').insert(variants.filter(v=>v.size).map((v,i) => ({ product_id:prod.id, size:v.size, color:v.color, screen_print:v.screen_print, stock_qty:v.stock_qty, sku_variant:`${form.sku}-${v.size}-${i}` })))
-    const imgs = imageUrls.filter(u=>u.trim())
-    if (imgs.length) await supabase.from('product_images').insert(imgs.map((url,i) => ({ product_id:prod.id, image_url:url, is_primary:i===0, sort_order:i })))
-    setSaving(false); setShowForm(false); fetchProducts()
-    setForm({ sku:'', name:'', name_th:'', category:'JACKET', collection:'', description_th:'', price:'', status:'active', featured:false })
-    setVariants([{ size:'M', color:'', screen_print:'', stock_qty:0 }]); setImageUrls([''])
+    if (editingId) {
+      const { error } = await supabase.from('products').update({ sku: form.sku, name: form.name, name_th: form.name_th, category: form.category, collection: form.collection, description_th: form.description_th, price: parseFloat(form.price), status: form.status, featured: form.featured }).eq('id', editingId)
+      if (error) { alert('Error: '+error.message); setSaving(false); return }
+      await supabase.from('product_variants').delete().eq('product_id', editingId)
+      if (variants.length) await supabase.from('product_variants').insert(variants.filter(v=>v.size).map((v,i) => ({ product_id: editingId, size: v.size, color: v.color, screen_print: v.screen_print, stock_qty: v.stock_qty, sku_variant: `${form.sku}-${v.size}-${i}` })))
+      await supabase.from('product_images').delete().eq('product_id', editingId)
+      const imgs = imageUrls.filter(u=>u.trim())
+      if (imgs.length) await supabase.from('product_images').insert(imgs.map((url,i) => ({ product_id: editingId, image_url: url, is_primary: i===0, sort_order: i })))
+    } else {
+      const { data: prod, error } = await supabase.from('products').insert({ sku: form.sku, name: form.name, name_th: form.name_th, category: form.category, collection: form.collection, description_th: form.description_th, price: parseFloat(form.price), status: form.status, featured: form.featured }).select().single()
+      if (error) { alert('Error: '+error.message); setSaving(false); return }
+      if (variants.length) await supabase.from('product_variants').insert(variants.filter(v=>v.size).map((v,i) => ({ product_id: prod.id, size: v.size, color: v.color, screen_print: v.screen_print, stock_qty: v.stock_qty, sku_variant: `${form.sku}-${v.size}-${i}` })))
+      const imgs = imageUrls.filter(u=>u.trim())
+      if (imgs.length) await supabase.from('product_images').insert(imgs.map((url,i) => ({ product_id: prod.id, image_url: url, is_primary: i===0, sort_order: i })))
+    }
+    setSaving(false); resetForm(); fetchProducts()
   }
+
   async function deleteProduct(id: string) {
     if (!confirm('ลบสินค้านี้?')) return
     await supabase.from('products').delete().eq('id', id); fetchProducts()
@@ -55,6 +80,7 @@ export default function AdminPage() {
     input: { width:'100%', padding:'10px 12px', background:'#1a1a1a', border:'1px solid #333', color:'#F0EDE8', fontSize:'0.9rem', boxSizing:'border-box' },
     btn: { padding:'10px 24px', background:'#C9A84C', color:'#0A0A0A', border:'none', cursor:'pointer', fontWeight:'700', fontSize:'0.85rem' },
     btnSm: { padding:'6px 14px', background:'transparent', color:'#ff4444', border:'1px solid #ff4444', cursor:'pointer', fontSize:'0.75rem' },
+    btnEdit: { padding:'6px 14px', background:'transparent', color:'#C9A84C', border:'1px solid #C9A84C', cursor:'pointer', fontSize:'0.75rem' },
     label: { display:'block', fontSize:'0.72rem', color:'#777', marginBottom:'6px', letterSpacing:'0.1em' },
     card: { background:'#111', border:'1px solid #1e1e1e', padding:'16px', marginBottom:'10px' },
   }
@@ -63,7 +89,7 @@ export default function AdminPage() {
     <div style={{ background:'#0A0A0A', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:'#111', padding:'40px', width:'320px', border:'1px solid #222' }}>
         <h2 style={{ fontFamily:'Playfair Display, serif', color:'#C9A84C', marginBottom:'24px', textAlign:'center' }}>Admin Login</h2>
-        <input type="password" placeholder="Password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(pw===process.env.NEXT_PUBLIC_ADMIN_PW||pw==='oldy2026'?setAuth(true):alert('รหัสผ่านไม่ถูกต้อง'))} style={{...s.input, marginBottom:'16px'}} />
+        <input type="password" placeholder="Password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(pw==='oldy2026'?setAuth(true):alert('รหัสผ่านไม่ถูกต้อง'))} style={{...s.input, marginBottom:'16px'}} />
         <button style={{...s.btn, width:'100%'}} onClick={()=>pw==='oldy2026'?setAuth(true):alert('รหัสผ่านไม่ถูกต้อง')}>เข้าสู่ระบบ</button>
       </div>
     </div>
@@ -80,10 +106,13 @@ export default function AdminPage() {
       </div>
 
       {tab === 'products' && <>
-        <button style={{...s.btn, marginBottom:'24px'}} onClick={()=>setShowForm(!showForm)}>{showForm?'ยกเลิก':'+ เพิ่มสินค้าใหม่'}</button>
+        <button style={{...s.btn, marginBottom:'24px'}} onClick={()=>{ resetForm(); setShowForm(true) }}>+ เพิ่มสินค้าใหม่</button>
         {showForm && (
-          <div style={{ background:'#111', border:'1px solid #C9A84C', padding:'24px', marginBottom:'32px' }}>
-            <h2 style={{ color:'#C9A84C', marginBottom:'20px' }}>เพิ่มสินค้าใหม่</h2>
+          <div style={{ background:'#111', border:`1px solid ${editingId?'#888':'#C9A84C'}`, padding:'24px', marginBottom:'32px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
+              <h2 style={{ color: editingId?'#F0EDE8':'#C9A84C' }}>{editingId ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
+              <button onClick={resetForm} style={{ background:'transparent', color:'#555', border:'none', cursor:'pointer', fontSize:'1.2rem' }}>X</button>
+            </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'16px' }}>
               <div><label style={s.label}>SKU *</label><input style={s.input} value={form.sku} onChange={e=>setForm({...form,sku:e.target.value})} placeholder="OC-JK-VTG-001" /></div>
               <div><label style={s.label}>Category</label><select style={s.input} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
@@ -116,21 +145,27 @@ export default function AdminPage() {
               ))}
               <button onClick={()=>setVariants([...variants,{size:'L',color:'',screen_print:'',stock_qty:0}])} style={{ background:'transparent', color:'#555', border:'1px solid #2a2a2a', padding:'6px 14px', cursor:'pointer', fontSize:'0.8rem' }}>+ เพิ่มไซส์</button>
             </div>
-            <button style={s.btn} onClick={saveProduct} disabled={saving}>{saving?'กำลังบันทึก...':'บันทึกสินค้า'}</button>
+            <div style={{ display:'flex', gap:'12px' }}>
+              <button style={s.btn} onClick={saveProduct} disabled={saving}>{saving?'กำลังบันทึก...':(editingId?'บันทึกการแก้ไข':'บันทึกสินค้า')}</button>
+              <button style={{ ...s.btn, background:'transparent', color:'#666', border:'1px solid #333' }} onClick={resetForm}>ยกเลิก</button>
+            </div>
           </div>
         )}
         {products.map(p=>(
           <div key={p.id} style={s.card}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div style={{ display:'flex', gap:'16px', alignItems:'center' }}>
-                {p.product_images?.[0]&&<img src={p.product_images[0].image_url} style={{ width:'56px', height:'72px', objectFit:'cover' }} />}
+                {p.product_images?.[0]&&<img src={p.product_images.find((i:any)=>i.is_primary)?.image_url||p.product_images[0].image_url} style={{ width:'56px', height:'72px', objectFit:'cover' }} />}
                 <div>
                   <p style={{ fontSize:'0.7rem', color:'#C9A84C', letterSpacing:'0.1em' }}>{p.sku} · {p.category}</p>
                   <p style={{ fontFamily:'Playfair Display, serif', margin:'4px 0' }}>{p.name_th||p.name}</p>
                   <p style={{ color:'#C9A84C', fontSize:'0.9rem' }}>฿{p.price?.toLocaleString()} · {p.product_variants?.length||0} ไซส์</p>
                 </div>
               </div>
-              <button style={s.btnSm} onClick={()=>deleteProduct(p.id)}>ลบ</button>
+              <div style={{ display:'flex', gap:'8px' }}>
+                <button style={s.btnEdit} onClick={()=>loadProductForEdit(p)}>แก้ไข</button>
+                <button style={s.btnSm} onClick={()=>deleteProduct(p.id)}>ลบ</button>
+              </div>
             </div>
           </div>
         ))}
@@ -160,4 +195,3 @@ export default function AdminPage() {
     </div>
   )
 }
-
