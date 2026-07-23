@@ -1,4 +1,5 @@
 'use client'
+import { CMSTab } from './page-cms'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -10,7 +11,7 @@ export default function AdminPage() {
   const [pw, setPw] = useState('')
   const [products, setProducts] = useState<any[]>([])
   const [orders, setOrders] = useState<any[]>([])
-  const [tab, setTab] = useState<'products'|'orders'>('products')
+  const [tab, setTab] = useState<'products'|'orders'|'cms'>('products')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string|null>(null)
@@ -101,7 +102,7 @@ export default function AdminPage() {
         <h1 style={{ fontFamily:'Playfair Display, serif', color:'#C9A84C', fontSize:'1.6rem' }}>OLDY COSMO — Admin</h1>
         <div style={{ display:'flex', gap:'12px' }}>
           <button style={{...s.btn, background: tab==='products'?'#C9A84C':'transparent', color: tab==='products'?'#0A0A0A':'#C9A84C', border:'1px solid #C9A84C'}} onClick={()=>setTab('products')}>สินค้า ({products.length})</button>
-          <button style={{...s.btn, background: tab==='orders'?'#C9A84C':'transparent', color: tab==='orders'?'#0A0A0A':'#C9A84C', border:'1px solid #C9A84C'}} onClick={()=>setTab('orders')}>Orders ({orders.length})</button>
+          <button style={{...s.btn, background: tab==='orders'?'#C9A84C':'transparent', color: tab==='orders'?'#0A0A0A':'#C9A84C', border:'1px solid #C9A84C'}} onClick={()=>setTab('orders')}>Orders ({orders.length})</button><button style={{...s.btn,background:tab==='cms'?'#C9A84C':'transparent',color:tab==='cms'?'#0A0A0A':'#C9A84C',border:'1px solid #C9A84C'}} onClick={()=>setTab('cms')}>หน้าเว็บ</button>
         </div>
       </div>
 
@@ -171,7 +172,7 @@ export default function AdminPage() {
         ))}
       </>}
 
-      {tab === 'orders' && <>
+      {tab==='cms' && <CMSTab s={s} />}{tab === 'orders' && <>
         {orders.length===0?<p style={{ color:'#444', padding:'40px 0' }}>ยังไม่มี Order</p>:orders.map(o=>(
           <div key={o.id} style={s.card}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
